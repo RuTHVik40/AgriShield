@@ -1,0 +1,100 @@
+{
+  "format": "graph-model",
+  "generatedBy": "AgriShield v1.0",
+  "convertedBy": "TensorFlow.js Converter v4.14.0",
+  "signature": {
+    "inputs": {
+      "input_image": {
+        "name": "input_image:0",
+        "dtype": "DT_FLOAT",
+        "tensorShape": {
+          "dim": [
+            {
+              "size": "-1"
+            },
+            {
+              "size": "224"
+            },
+            {
+              "size": "224"
+            },
+            {
+              "size": "3"
+            }
+          ]
+        }
+      }
+    },
+    "outputs": {
+      "predictions": {
+        "name": "predictions:0",
+        "dtype": "DT_FLOAT",
+        "tensorShape": {
+          "dim": [
+            {
+              "size": "-1"
+            },
+            {
+              "size": "38"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "modelTopology": {
+    "node": [
+      {
+        "name": "input_image",
+        "op": "Placeholder",
+        "attr": {
+          "dtype": {
+            "type": "DT_FLOAT"
+          },
+          "shape": {
+            "shape": {
+              "dim": [
+                {
+                  "size": "-1"
+                },
+                {
+                  "size": "224"
+                },
+                {
+                  "size": "224"
+                },
+                {
+                  "size": "3"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "predictions",
+        "op": "Softmax",
+        "input": [
+          "dense_output"
+        ]
+      }
+    ]
+  },
+  "weightsManifest": [
+    {
+      "paths": [
+        "group1-shard1of1.bin"
+      ],
+      "weights": [
+        {
+          "name": "predictions/kernel",
+          "shape": [
+            256,
+            38
+          ],
+          "dtype": "float32"
+        }
+      ]
+    }
+  ]
+}
