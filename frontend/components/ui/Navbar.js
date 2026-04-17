@@ -88,7 +88,7 @@ export default function Navbar() {
                           <div className="text-xs text-primary-500 truncate">{session.user?.email}</div>
                         </div>
                         <button
-                          onClick={() => signOut()}
+                          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
                           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
                                      text-red-400 hover:bg-red-900/20 transition-colors text-left"
                         >

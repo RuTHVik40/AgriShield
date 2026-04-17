@@ -7,8 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import uvicorn
-
-from routers import alerts, community, auth, push, health
+from routers import alerts, community, auth, push, health, predict
 from database import engine, Base
 
 # Create all tables on startup
@@ -41,7 +40,7 @@ app.include_router(auth.router,       prefix="/api/auth",     tags=["Auth"])
 app.include_router(alerts.router,     prefix="/api/alerts",   tags=["Alerts"])
 app.include_router(community.router,  prefix="/api/community",tags=["Community"])
 app.include_router(push.router,       prefix="/api/push",     tags=["Push Notifications"])
-
+app.include_router(predict.router, prefix="/api/predict", tags=["ML"])
 @app.get("/")
 async def root():
     return {"app": "AgriShield API", "version": "1.0.0", "status": "healthy"}
