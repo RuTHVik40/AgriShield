@@ -106,7 +106,7 @@ def get_nearby_alerts(
             pd.latitude,
             pd.longitude,
             pd.created_at,
-            u.name as farmer_name,
+            COALESCE(u.name, 'Anonymous Farmer') as farmer_name,
             ST_Distance(
                 pd.location::geography,
                 ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography

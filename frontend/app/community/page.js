@@ -2,36 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Users, MapPin, Heart, MessageCircle,
-  Camera, Send, Map, Activity
+  Users, Heart, MessageCircle, Send, ImagePlus
 } from 'lucide-react';
 import Navbar from '@/components/ui/Navbar';
-import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
-
 import { communityApi } from '@/lib/apiClient';
-
-const InfestationMap = dynamic(
-  () => import('@/components/map/InfestationMap'),
-  { ssr: false }
-);
 
 export default function CommunityPage() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState('feed');
-  const [newPost, setNewPost] = useState('');
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Redirect if not logged in ──
+  const [newPost, setNewPost] = useState('');
+  const [image, setImage] = useState(null);
+  const [openComments, setOpenComments] = useState({});
+
+  // ── Redirect ──
   useEffect(() => {
     if (!session) router.push('/auth/signin');
-  }, [session, router]);
+  }, [session]);
 
   // ── Fetch Feed ──
   const fetchFeed = async () => {
@@ -39,20 +33,8 @@ export default function CommunityPage() {
       setLoading(true);
       const res = await communityApi.getFeed(1);
 
-      const mapped = res.data.map((p) => ({
-        id: p.id,
-        author: p.author_name,
-        location: p.location_name || 'Unknown',
-        time: new Date(p.created_at).toLocaleString(),
-        pest: p.pest_name || 'General',
-        severity: 'low', // optional (you can enhance later)
-        text: p.content,
-        imageUrl: p.image_url,
-        likes: p.likes_count,
-      }));
-
-      setPosts(mapped);
-    } catch (err) {
+      setPosts(res.data);
+    } catch {
       toast.error('Failed to load feed');
     } finally {
       setLoading(false);
@@ -63,6 +45,20 @@ export default function CommunityPage() {
     fetchFeed();
   }, []);
 
+  // ── Upload Image ──
+  const handleImageUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    const res = await communityApi.uploadImage(file);
+    setImage(res.data.url);
+    toast.success('Image uploaded');
+  } catch {
+    toast.error('Upload failed');
+  }
+};
+
   // ── Create Post ──
   const submitPost = async () => {
     if (!newPost.trim()) return;
@@ -70,18 +66,19 @@ export default function CommunityPage() {
     try {
       await communityApi.createPost({
         content: newPost,
+        image_url: image,
       });
 
       setNewPost('');
+      setImage(null);
       toast.success('Post created');
-
-      fetchFeed(); // refresh
-    } catch (err) {
-      toast.error(err.message);
+      fetchFeed();
+    } catch {
+      toast.error('Failed to post');
     }
   };
 
-  // ── Like Post ──
+  // ── Like ──
   const handleLike = async (id) => {
     try {
       const res = await communityApi.likePost(id);
@@ -89,83 +86,171 @@ export default function CommunityPage() {
       setPosts((prev) =>
         prev.map((p) =>
           p.id === id
-            ? { ...p, likes: res.data.likes_count }
+            ? {
+                ...p,
+                likes_count: res.data.likes_count,
+                liked_by_user: res.data.liked,
+              }
             : p
         )
       );
-    } catch (err) {
+    } catch {
       toast.error('Like failed');
     }
+  };
+
+  // ── Toggle Comments ──
+  const toggleComments = (id) => {
+    setOpenComments((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   return (
     <div className="min-h-screen">
       <Navbar />
 
-      <div className="pt-24 pb-12 px-4 md:px-8 max-w-7xl mx-auto">
+      <div className="pt-24 px-4 max-w-2xl mx-auto">
 
-        {/* Header */}
-        <div className="flex justify-between mb-8">
-          <h1 className="text-3xl text-white flex gap-2">
-            <Users /> Community
-          </h1>
+        {/* HEADER */}
+        <h1 className="text-3xl text-white mb-6 flex gap-2">
+          <Users /> Community
+        </h1>
 
-          <div className="flex gap-2">
-            <button onClick={() => setActiveTab('feed')}>Feed</button>
-            <button onClick={() => setActiveTab('heatmap')}>Map</button>
-          </div>
+        {/* CREATE POST */}
+        <div className="glass-card p-5 mb-6 rounded-2xl space-y-3">
+
+          <textarea
+            value={newPost}
+            onChange={(e) => setNewPost(e.target.value)}
+            placeholder="Share your crop issue or experience..."
+            className="input-field w-full"
+          />
+
+          {/* Upload */}
+          <label className="flex items-center gap-2 text-sm cursor-pointer text-gray-300">
+            <ImagePlus size={18} /> Add Image
+            <input type="file" hidden onChange={handleImageUpload} />
+          </label>
+
+          {image && (
+            <img src={image} className="rounded-xl h-40 object-cover" />
+          )}
+
+          <button onClick={submitPost} className="btn-primary w-full">
+            <Send size={16} /> Post
+          </button>
         </div>
 
-        <AnimatePresence mode="wait">
+        {/* FEED */}
+        {loading && <p className="text-gray-400">Loading posts...</p>}
 
-          {/* ── FEED ── */}
-          {activeTab === 'feed' ? (
-            <motion.div key="feed">
+        {!loading && posts.length === 0 && (
+          <p className="text-gray-400">No posts yet 🌱</p>
+        )}
 
-              {/* Post Box */}
-              <div className="glass-card p-4 mb-6">
-                <textarea
-                  value={newPost}
-                  onChange={(e) => setNewPost(e.target.value)}
-                  placeholder="Share something..."
-                  className="input-field w-full"
-                />
-
-                <button onClick={submitPost} className="btn-primary mt-2">
-                  <Send className="w-4 h-4" />
-                  Post
-                </button>
+        {posts.map((post) => (
+          <motion.div
+            key={post.id}
+            className="glass-card p-5 mb-6 rounded-2xl hover:scale-[1.01] transition"
+          >
+            {/* HEADER */}
+            <div className="flex justify-between">
+              <div>
+                <h3 className="text-white font-semibold">
+                  {post.author_name}
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {post.location_name || 'Unknown'}
+                </p>
               </div>
+              <span className="text-xs text-gray-500">
+                {new Date(post.created_at).toLocaleString()}
+              </span>
+            </div>
 
-              {/* Loading */}
-              {loading && <p>Loading feed...</p>}
+            {/* IMAGE */}
+            {post.image_url && (
+              <img
+                src={post.image_url}
+                className="mt-3 rounded-xl w-full h-64 object-cover"
+              />
+            )}
 
-              {/* Posts */}
-              {posts.map((post) => (
-                <div key={post.id} className="glass-card p-4 mb-4">
-                  <h3 className="text-white font-bold">{post.author}</h3>
-                  <p className="text-sm text-gray-400">{post.location}</p>
+            {/* TEXT */}
+            <p className="mt-3 text-gray-200">{post.content}</p>
 
-                  <p className="mt-2">{post.text}</p>
+            {/* ACTIONS */}
+            <div className="flex gap-6 mt-4 text-sm">
 
-                  <div className="flex gap-4 mt-3">
-                    <button onClick={() => handleLike(post.id)}>
-                      ❤️ {post.likes}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-          ) : (
+              <button onClick={() => handleLike(post.id)}>
+  {post.liked_by_user ? '💖' : '🤍'} {post.likes_count}
+</button>
 
-            /* ── MAP ── */
-            <motion.div key="map" className="h-[600px]">
-              <InfestationMap height="600px" />
-            </motion.div>
+              <button onClick={() => toggleComments(post.id)}>
+                💬 {post.comments_count}
+              </button>
 
-          )}
-        </AnimatePresence>
+            </div>
+
+            {/* COMMENTS */}
+            {openComments[post.id] && (
+              <CommentsSection postId={post.id} />
+            )}
+          </motion.div>
+        ))}
+
       </div>
+    </div>
+  );
+}
+
+/* ───────────────── COMMENTS COMPONENT ───────────────── */
+
+function CommentsSection({ postId }) {
+  const [comments, setComments] = useState([]);
+  const [text, setText] = useState('');
+
+  useEffect(() => {
+  communityApi.getComments(postId)
+    .then((res) => setComments(res.data))
+    .catch(() => toast.error("Failed to load comments"));
+}, [postId]);
+
+  const submit = async () => {
+  if (!text.trim()) return;
+
+  try {
+    await communityApi.addComment(postId, text);
+    setText('');
+
+    const res = await communityApi.getComments(postId);
+    setComments(res.data);
+  } catch {
+    toast.error("Failed to add comment");
+  }
+};
+
+  return (
+    <div className="mt-3 border-t border-gray-700 pt-3">
+
+      {comments.map((c) => (
+        <p key={c.id} className="text-sm text-gray-300">
+          <b>{c.author}</b>: {c.content}
+        </p>
+      ))}
+
+      <div className="flex mt-2 gap-2">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="input-field flex-1"
+          placeholder="Add comment..."
+        />
+        <button onClick={submit}>Send</button>
+      </div>
+
     </div>
   );
 }

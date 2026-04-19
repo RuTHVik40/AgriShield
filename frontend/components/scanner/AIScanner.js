@@ -181,24 +181,46 @@ export default function AIScanner({ onDetection }) {
                 Recommended Actions:
               </h4>
 
-              {Object.entries(result.recommendations).map(
-                ([type, items]) => (
-                  <div key={type} className="mb-3">
-                    <h5 className="font-medium capitalize">
-                      {type}
-                    </h5>
+              {Object.entries(result.recommendations).map(([type, items]) => {
+  // 🔹 HANDLE OBJECT TYPES (overview, recovery)
+  if (!Array.isArray(items)) {
+    return (
+      <div key={type} className="mb-3">
+        <h5 className="font-medium capitalize text-accent">
+          {type === "overview" && "📊 Overview"}
+          {type === "recovery" && "💡 Recovery"}
+        </h5>
 
-                    {items.map((r, i) => (
-                      <div
-                        key={i}
-                        className="text-sm text-primary-300"
-                      >
-                        • {r.action}
-                      </div>
-                    ))}
-                  </div>
-                )
-              )}
+        {Object.entries(items).map(([key, value]) => (
+          <div key={key} className="text-sm text-primary-300">
+            • <strong>{key}:</strong> {value}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // 🔹 HANDLE ARRAY TYPES (normal case)
+  return (
+    <div key={type} className="mb-3">
+      <h5 className="font-medium capitalize text-accent">
+        {type === "immediate" && "🚨 Immediate Action"}
+        {type === "organic" && "🌿 Organic"}
+        {type === "chemical" && "🧪 Chemical"}
+        {type === "prevention" && "🛡 Prevention"}
+        {type === "symptoms" && "🔍 Symptoms"}
+      </h5>
+
+      {items.map((r, i) => (
+        <div key={i} className="text-sm text-primary-300">
+          • {r.action}
+          {r.product && ` (${r.product})`}
+          {r.dosage && ` – ${r.dosage}`}
+        </div>
+      ))}
+    </div>
+  );
+})}
             </div>
 
             {/* Alert Button */}

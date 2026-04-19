@@ -6,6 +6,8 @@ import logging
 from services.ml_service import predict_image
 from services.alerts_service import handle_detection, get_severity
 from database import get_db
+from services.auth_service import get_current_user_optional
+from models.models import User   # ✅ IMPORTANT (missing in your code)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -16,7 +18,8 @@ async def predict(
     file: UploadFile = File(...),
     lat: Optional[float] = None,
     lng: Optional[float] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)  # ✅ FIX HERE
 ):
     try:
         # ── Validate file ──
@@ -35,7 +38,6 @@ async def predict(
         alert_response = None
 
         if lat is not None and lng is not None:
-            # Validate coordinates
             if not (-90 <= lat <= 90 and -180 <= lng <= 180):
                 raise HTTPException(status_code=400, detail="Invalid coordinates")
 
@@ -45,7 +47,8 @@ async def predict(
                 confidence=result["confidence"],
                 severity=severity,
                 lat=lat,
-                lng=lng
+                lng=lng,
+                user=current_user   # ✅ now works correctly
             )
 
         return {

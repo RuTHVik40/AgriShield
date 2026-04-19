@@ -46,6 +46,43 @@ const authOptions = {
         }
       },
     }),
+
+    // 🔥 NEW: Email + Password (Simple JWT)
+    CredentialsProvider({
+      id: 'email-password',
+      name: 'Email & Password',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.detail || 'Invalid credentials');
+          }
+
+          return {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            accessToken: data.access_token,
+          };
+        } catch (err) {
+          throw new Error(err.message || 'Login failed');
+        }
+      },
+    }),
   ],
 
   callbacks: {
@@ -74,10 +111,11 @@ const authOptions = {
         }
       }
 
-      // 🔹 OTP login
+      // 🔹 OTP + Email login
       if (user) {
         token.id = user.id;
         token.phone = user.phone;
+        token.email = user.email;
         token.accessToken = user.accessToken || token.accessToken;
       }
 
@@ -89,6 +127,7 @@ const authOptions = {
         ...session.user,
         id: token.id,
         phone: token.phone,
+        email: token.email,
       };
       session.accessToken = token.accessToken;
       return session;

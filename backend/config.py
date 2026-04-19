@@ -9,6 +9,10 @@ import secrets
 
 
 class Settings(BaseSettings):
+
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
     # ── Database ─────────────────────────────────────────────
     DATABASE_URL: str
 
@@ -31,6 +35,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ALERT_RADIUS_METERS: int = 5000
     MAX_COMMUNITY_POSTS_PER_PAGE: int = 20
+
+
 
     class Config:
         env_file = ".env"

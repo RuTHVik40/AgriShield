@@ -1,5 +1,5 @@
 """
-Auth Service — Extract current user from JWT
+Auth Service — Extract current user from JWT (UPDATED)
 """
 
 from typing import Optional
@@ -16,7 +16,7 @@ from config import settings
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def decode_token(token: str):
+def decode_token(token: str) -> uuid.UUID:
     try:
         payload = jwt.decode(
             token,
@@ -24,12 +24,16 @@ def decode_token(token: str):
             algorithms=[settings.ALGORITHM],
             options={"verify_aud": False}
         )
+
         user_id = payload.get("sub")
         if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
+            raise HTTPException(status_code=401, detail="Invalid token")
+
         return uuid.UUID(user_id)
+
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
+
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -38,11 +42,11 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    if not credentials:
+
+    if not credentials or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authorization required",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     user_id = decode_token(credentials.credentials)
@@ -57,18 +61,33 @@ def get_current_user(
 
     return user
 
+security = HTTPBearer(auto_error=False)
 
 def get_current_user_optional(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-    db: Session = Depends(get_db),
-) -> Optional[User]:
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
     if not credentials:
         return None
+
     try:
-        user_id = decode_token(credentials.credentials)
-        return db.query(User).filter(
-            User.id == user_id,
-            User.is_active == True
-        ).first()
-    except Exception:
+        token = credentials.credentials
+
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+
+        user_id = payload.get("sub")
+
+        if not user_id:
+            return None
+
+        user = db.query(User).filter(User.id == user_id).first()
+
+        return user
+
+    except Exception as e:
+        print("AUTH ERROR:", e)
         return None

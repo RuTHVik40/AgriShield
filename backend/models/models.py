@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
 import uuid
-
+import datetime
 from database import Base
 
 
@@ -29,7 +29,7 @@ class User(Base):
     google_id  = Column(String(100), unique=True, nullable=True)
     avatar_url = Column(Text, nullable=True)
     farm_name  = Column(String(200), nullable=True)
-
+    password = Column(String, nullable=True)
     # Location
     latitude   = Column(Float, nullable=True)
     longitude  = Column(Float, nullable=True)
@@ -108,6 +108,9 @@ class PestDetection(Base):
 # ─────────────────────────────────────────────────────────────
 # COMMUNITY POSTS
 # ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# COMMUNITY POSTS
+# ─────────────────────────────────────────────────────────────
 class CommunityPost(Base):
     __tablename__ = "community_posts"
 
@@ -128,10 +131,21 @@ class CommunityPost(Base):
 
     created_at  = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
+    # Relationships
     user      = relationship("User", back_populates="community_posts")
     detection = relationship("PestDetection")
-    likes     = relationship(
-        "PostLike", back_populates="post", cascade="all, delete-orphan"
+
+    likes = relationship(
+        "PostLike",
+        back_populates="post",
+        cascade="all, delete-orphan"
+    )
+
+    # ✅ NEW (IMPORTANT)
+    comments = relationship(
+        "PostComment",
+        backref="post",
+        cascade="all, delete-orphan"
     )
 
 
@@ -164,3 +178,17 @@ class OTPRecord(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used       = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+# ─────────────────────────────────────────────────────────────
+# POST COMMENTS
+# ─────────────────────────────────────────────────────────────
+class PostComment(Base):
+    __tablename__ = "post_comments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    post_id = Column(UUID(as_uuid=True), ForeignKey("community_posts.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User")

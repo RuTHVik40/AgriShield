@@ -9,7 +9,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 import uvicorn
 from routers import alerts, community, auth, push, health, predict
 from database import engine, Base
-
+from dotenv import load_dotenv
+load_dotenv()
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
 

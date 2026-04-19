@@ -1,166 +1,189 @@
 'use client';
-
+import { FcGoogle } from 'react-icons/fc';
 import { useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Phone, MessageSquare, Leaf, ArrowLeft, Loader } from 'lucide-react';
+import { Phone, Mail, Lock, Leaf, ArrowLeft, Loader } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { authApi } from '@/lib/apiClient';
-
+import { useEffect } from 'react';
 export default function SignInPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
   const [step, setStep] = useState('choice');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
   const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+
   const [loading, setLoading] = useState(false);
-  if (status === 'loading') {
-    return null; // or a loading spinner
-  }
+
+  useEffect(() => {
   if (session) {
     router.push('/dashboard');
-    return null;
   }
+}, [session, router]);
 
-  // 🔹 Google Login
-  const handleGoogleSignIn = () => {
+if (status === 'loading') return null;
+
+  // 🔹 EMAIL LOGIN (PRIMARY)
+  const handleEmailLogin = async () => {
+    if (!email || !password) {
+      toast.error('Enter email & password');
+      return;
+    }
+
     setLoading(true);
+    const res = await signIn('email-password', {
+      email,
+      password,
+      redirect: false,
+    });
+
+    setLoading(false);
+
+    if (res?.ok) {
+      toast.success('Login successful');
+      router.push('/dashboard');
+    } else {
+      toast.error('Invalid credentials');
+    }
+  };
+
+  // 🔹 GOOGLE
+  const handleGoogleSignIn = () => {
     signIn('google', { callbackUrl: '/dashboard' });
   };
 
-  // 🔹 Send OTP
+  // 🔹 OTP SEND
   const sendOtp = async () => {
     if (!phone || phone.length < 10) {
-      toast.error('Enter a valid phone number');
+      toast.error('Enter valid phone');
       return;
     }
 
     setLoading(true);
-    try {
-      await authApi.sendOtp(`${countryCode}${phone}`);
-      setStep('otp');
-      toast.success('OTP sent!');
-    } catch (err) {
-      toast.error(err.message || 'Failed to send OTP');
-    } finally {
-      setLoading(false);
-    }
+    await authApi.sendOtp(`${countryCode}${phone}`);
+    setLoading(false);
+    setStep('otp');
+    toast.success('OTP sent');
   };
 
-  // 🔹 Verify OTP
+  // 🔹 OTP VERIFY
   const verifyOtp = async () => {
-    if (otp.length !== 6) {
-      toast.error('Enter 6-digit OTP');
-      return;
-    }
-
     setLoading(true);
-    try {
-      const result = await signIn('phone-otp', {
-        phone: `${countryCode}${phone}`,
-        otp,
-        redirect: false,
-      });
+    const res = await signIn('phone-otp', {
+      phone: `${countryCode}${phone}`,
+      otp,
+      redirect: false,
+    });
+    setLoading(false);
 
-      if (result?.ok) {
-        toast.success('Login successful');
-        router.push('/dashboard');
-      } else {
-        toast.error('Invalid OTP');
-      }
-    } catch (err) {
-      toast.error(err.message || 'Verification failed');
-    } finally {
-      setLoading(false);
+    if (res?.ok) {
+      toast.success('Login successful');
+      router.push('/dashboard');
+    } else {
+      toast.error('Invalid OTP');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md">
-
-        <Link href="/" className="text-sm text-primary-500 mb-6 inline-block">
-          <ArrowLeft className="w-4 h-4 inline mr-2" />
-          Back
-        </Link>
-
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <motion.div className="w-full max-w-md">
+      <Link href="/" className="text-sm text-primary-500 mb-6 inline-block">
+  <ArrowLeft className="w-4 h-4 inline mr-2" />
+  Back
+</Link>
         <div className="glass-card p-8">
 
           <div className="text-center mb-6">
             <Leaf className="mx-auto mb-3" />
-            <h1 className="text-xl font-bold">AgriShield</h1>
+            <h1 className="text-xl font-bold">Sign In</h1>
           </div>
 
-          {/* STEP 1 */}
+          {/* 🔥 PRIMARY LOGIN */}
+          <div className="space-y-3">
+            <input
+              type="email"
+              placeholder="Email"
+              className="input-field"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              className="input-field"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <button onClick={handleEmailLogin} className="btn-primary w-full">
+              {loading ? <Loader className="animate-spin w-4 h-4" /> : 'Sign In'}
+            </button>
+          </div>
+
+          <div className="my-4 text-center text-sm">or</div>
+
+          {/* GOOGLE */}
+          <button
+  onClick={handleGoogleSignIn}
+  className="btn-ghost w-full mb-2 flex items-center justify-center gap-2"
+>
+  <FcGoogle className="w-5 h-5" />
+  Continue with Google
+</button>
+
+          {/* PHONE */}
           {step === 'choice' && (
-            <div className="space-y-4">
-              <button
-                onClick={handleGoogleSignIn}
-                className="btn-primary w-full"
-                disabled={loading}
-              >
-                Continue with Google
-              </button>
-
-              <button
-                onClick={() => setStep('phone')}
-                className="btn-ghost w-full"
-              >
-                <Phone className="w-4 h-4 mr-2" />
-                Continue with Phone
-              </button>
-            </div>
+            <button onClick={() => setStep('phone')} className="btn-ghost w-full">
+              <Phone className="w-4 h-4 mr-2" />
+              Continue with Phone
+            </button>
           )}
 
-          {/* STEP 2 */}
           {step === 'phone' && (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <select
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="input-field w-24"
-                >
-                  <option value="+91">+91</option>
-                  <option value="+1">+1</option>
-                </select>
-
-                <input
-                  type="tel"
-                  placeholder="9876543210"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="input-field flex-1"
-                />
-              </div>
-
-              <button onClick={sendOtp} className="btn-primary w-full" disabled={loading}>
-                {loading ? <Loader className="animate-spin w-4 h-4" /> : 'Send OTP'}
+            <div className="space-y-3 mt-3">
+              <input
+                type="tel"
+                placeholder="Phone"
+                className="input-field"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <button onClick={sendOtp} className="btn-primary w-full">
+                Send OTP
               </button>
             </div>
           )}
 
-          {/* STEP 3 */}
           {step === 'otp' && (
-            <div className="space-y-4">
+            <div className="space-y-3 mt-3">
               <input
                 type="text"
-                maxLength={6}
+                placeholder="Enter OTP"
+                className="input-field"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                className="input-field text-center"
-                placeholder="Enter OTP"
               />
-
-              <button onClick={verifyOtp} className="btn-primary w-full" disabled={loading}>
-                {loading ? <Loader className="animate-spin w-4 h-4" /> : 'Verify OTP'}
+              <button onClick={verifyOtp} className="btn-primary w-full">
+                Verify OTP
               </button>
             </div>
           )}
+
+          <p className="text-center mt-4 text-sm">
+            Don’t have an account?{' '}
+            <Link href="/auth/signup" className="text-primary-500">
+              Sign up
+            </Link>
+          </p>
 
         </div>
       </motion.div>

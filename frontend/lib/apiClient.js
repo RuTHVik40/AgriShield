@@ -9,17 +9,19 @@ export const apiClient = axios.create({
 });
 
 
-// Attach JWT
 apiClient.interceptors.request.use(async (config) => {
-  const session = await getSession();
+  if (typeof window !== "undefined") {
+    const session = await getSession();
 
-  if (session?.accessToken) {
-    config.headers.Authorization = `Bearer ${session.accessToken}`;
+    console.log("SESSION TOKEN:", session?.accessToken);
+
+    if (session?.accessToken) {
+      config.headers.Authorization = `Bearer ${session.accessToken}`;
+    }
   }
 
   return config;
 });
-
 // Error handling
 apiClient.interceptors.response.use(
   (response) => response,
@@ -38,14 +40,18 @@ apiClient.interceptors.response.use(
 
 export const mlApi = {
   predict: (file, lat, lng) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  const formData = new FormData();
+  formData.append('file', file);
 
-    return apiClient.post('/api/predict', formData, {
-      params: lat && lng ? { lat, lng } : {},
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  if (lat && lng) {
+    formData.append('lat', lat);   // ✅ ADD
+    formData.append('lng', lng);   // ✅ ADD
   }
+
+  return apiClient.post('/api/predict', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
 };
 
 export const alertsApi = {
@@ -69,13 +75,36 @@ export const communityApi = {
     apiClient.get('/api/community/feed', { params: { page } }),
 
   createPost: (data) =>
-    apiClient.post('/api/community/posts', data),
-
-  getHeatmap: (lat, lng, radius) =>
-    apiClient.get('/api/alerts/heatmap', { params: { lat, lng, radius } }),
+    apiClient.post('/api/community/posts', {
+      content: data.content,
+      image_url: data.image_url,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      location_name: data.location_name,
+    }),
 
   likePost: (postId) =>
     apiClient.post(`/api/community/posts/${postId}/like`),
+
+  // ✅ NEW
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return apiClient.post("/api/community/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  // ✅ NEW
+  getComments: (postId) =>
+    apiClient.get(`/api/community/posts/${postId}/comments`),
+
+  // ✅ NEW
+  addComment: (postId, content) =>
+    apiClient.post(`/api/community/posts/${postId}/comments`, {
+      content,
+    }),
 };
 
 export const authApi = {
