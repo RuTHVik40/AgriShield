@@ -4,38 +4,41 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Scan, MapPin } from 'lucide-react';
+import { Scan } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Navbar from '@/components/ui/Navbar';
 import AIScanner from '@/components/scanner/AIScanner';
 import { apiClient } from '@/lib/apiClient';
-import toast from 'react-hot-toast';
+import { useLanguage } from '@/lib/languageContext';
+import { t } from '@/lib/translations';
 
 export default function ScannerPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { lang } = useLanguage();
 
   const [location, setLocation] = useState(null);
   const [fetchingLocation, setFetchingLocation] = useState(false);
 
   const getLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation not supported');
+      toast.error(t(lang, 'geolocationNotSupported'));
       return;
     }
 
     setFetchingLocation(true);
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      (position) => {
         setLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
         });
         setFetchingLocation(false);
-        toast.success('Location captured!');
+        toast.success(t(lang, 'locationCaptured'));
       },
       () => {
-        toast.error('Could not get location');
+        toast.error(t(lang, 'couldNotGetLocation'));
         setFetchingLocation(false);
       },
       { timeout: 10000, enableHighAccuracy: true }
@@ -43,17 +46,18 @@ export default function ScannerPage() {
   };
 
   const handleDetection = async (detection) => {
-    // Only send alert when explicitly requested
-    if (!detection.triggerAlert) return;
+    if (!detection.triggerAlert) {
+      return;
+    }
 
     if (!session) {
-      toast.error('Sign in to send alerts');
+      toast.error(t(lang, 'signInToSendAlerts'));
       router.push('/auth/signin');
       return;
     }
 
     if (!location) {
-      toast.error('Enable location to send alert');
+      toast.error(t(lang, 'enableLocationToSendAlert'));
       return;
     }
 
@@ -66,9 +70,9 @@ export default function ScannerPage() {
         longitude: location.lng,
       });
 
-      toast.success('🚨 Alert sent to nearby farmers!');
-    } catch (err) {
-      toast.error(err.message || 'Alert failed');
+      toast.success(t(lang, 'alertSentToNearbyFarmers'));
+    } catch (error) {
+      toast.error(error.message || t(lang, 'alertFailed'));
     }
   };
 
@@ -79,27 +83,26 @@ export default function ScannerPage() {
       <div className="pt-24 pb-12 px-4 max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8">
           <div className="flex items-center gap-3">
-            <Scan className="text-white" />
+            <Scan className="theme-heading" />
             <div>
-              <h1 className="text-xl font-bold text-white">AI Pest Scanner</h1>
-              <p className="text-sm text-primary-500">Scan crop leaves</p>
+              <h1 className="theme-heading text-xl font-bold">{t(lang, 'aiPestScannerTitle')}</h1>
+              <p className="theme-muted text-sm">{t(lang, 'scanCropLeaves')}</p>
             </div>
           </div>
         </motion.div>
 
-        {/* Location */}
         {!location && (
           <div className="mb-6 flex justify-between items-center">
-            <span className="text-sm text-primary-400">Enable location for alerts</span>
+            <span className="theme-subtext text-sm">{t(lang, 'enableLocationForAlerts')}</span>
             <button onClick={getLocation} className="btn-primary">
-              {fetchingLocation ? 'Getting...' : 'Enable'}
+              {fetchingLocation ? t(lang, 'getting') : t(lang, 'enable')}
             </button>
           </div>
         )}
 
         {location && (
-          <div className="mb-6 text-xs text-primary-400">
-            📍 {location.lat.toFixed(3)}, {location.lng.toFixed(3)}
+          <div className="theme-subtext mb-6 text-xs">
+            {location.lat.toFixed(3)}, {location.lng.toFixed(3)}
           </div>
         )}
 

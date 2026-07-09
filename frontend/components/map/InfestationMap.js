@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { alertsApi } from '@/lib/apiClient';
+import { useTheme } from '@/lib/themeContext';
 
 export default function InfestationMap({
   center = [17.385, 78.4867],
@@ -10,6 +11,7 @@ export default function InfestationMap({
 }) {
   const mapRef = useRef(null);
   const mapObj = useRef(null);
+  const { theme } = useTheme();
 
   const [location, setLocation] = useState({
     lat: center[0],
@@ -59,7 +61,9 @@ export default function InfestationMap({
       });
 
       L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        theme === 'light'
+          ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
         {
           subdomains: 'abcd',
           maxZoom: 19,
@@ -119,7 +123,7 @@ export default function InfestationMap({
                 background: ${color};
                 border-radius: 50% 50% 50% 0;
                 transform: rotate(-45deg);
-                box-shadow: 0 0 12px ${color}66;
+                box-shadow: ${theme === 'light' ? `0 4px 12px ${color}33` : `0 0 12px ${color}66`};
               "></div>
             `,
             iconSize: [32, 32],
@@ -130,10 +134,11 @@ export default function InfestationMap({
             .addTo(mapObj.current)
             .bindPopup(`
               <div style="
-                background: #0a1a10;
+                background: ${theme === 'light' ? '#ffffff' : '#0a1a10'};
                 border-radius: 10px;
                 padding: 10px;
-                color: #d1fae5;
+                color: ${theme === 'light' ? '#2f3e34' : '#d1fae5'};
+                border: 1px solid ${theme === 'light' ? '#e0e6e3' : 'rgba(16, 185, 129, 0.15)'};
               ">
                 <div style="font-weight:600">${m.pest_name}</div>
                 <div style="font-size:12px">${m.farmer_name || 'Unknown'}</div>
@@ -164,7 +169,7 @@ export default function InfestationMap({
         mapObj.current = null;
       }
     };
-  }, [location]);
+  }, [location, theme]);
 
   return (
     <div

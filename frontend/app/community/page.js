@@ -1,41 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import {
-  Users, Heart, MessageCircle, Send, ImagePlus
-} from 'lucide-react';
-import Navbar from '@/components/ui/Navbar';
+import { Users, ImagePlus, Send } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
+import Navbar from '@/components/ui/Navbar';
 import { communityApi } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/languageContext';
+import { getLocale, t } from '@/lib/translations';
 
 export default function CommunityPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { lang } = useLanguage();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [newPost, setNewPost] = useState('');
   const [image, setImage] = useState(null);
   const [openComments, setOpenComments] = useState({});
 
-  // ── Redirect ──
   useEffect(() => {
-    if (!session) router.push('/auth/signin');
-  }, [session]);
+    if (!session) {
+      router.push('/auth/signin');
+    }
+  }, [router, session]);
 
-  // ── Fetch Feed ──
   const fetchFeed = async () => {
     try {
       setLoading(true);
-      const res = await communityApi.getFeed(1);
-
-      setPosts(res.data);
+      const response = await communityApi.getFeed(1);
+      setPosts(response.data);
     } catch {
-      toast.error('Failed to load feed');
+      toast.error(t(lang, 'failedToLoadFeed'));
     } finally {
       setLoading(false);
     }
@@ -43,25 +42,27 @@ export default function CommunityPage() {
 
   useEffect(() => {
     fetchFeed();
-  }, []);
+  }, [lang]);
 
-  // ── Upload Image ──
-  const handleImageUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
 
-  try {
-    const res = await communityApi.uploadImage(file);
-    setImage(res.data.url);
-    toast.success('Image uploaded');
-  } catch {
-    toast.error('Upload failed');
-  }
-};
+    try {
+      const response = await communityApi.uploadImage(file);
+      setImage(response.data.url);
+      toast.success(t(lang, 'imageUploaded'));
+    } catch {
+      toast.error(t(lang, 'uploadFailed'));
+    }
+  };
 
-  // ── Create Post ──
   const submitPost = async () => {
-    if (!newPost.trim()) return;
+    if (!newPost.trim()) {
+      return;
+    }
 
     try {
       await communityApi.createPost({
@@ -71,39 +72,37 @@ export default function CommunityPage() {
 
       setNewPost('');
       setImage(null);
-      toast.success('Post created');
+      toast.success(t(lang, 'postCreated'));
       fetchFeed();
     } catch {
-      toast.error('Failed to post');
+      toast.error(t(lang, 'failedToPost'));
     }
   };
 
-  // ── Like ──
   const handleLike = async (id) => {
     try {
-      const res = await communityApi.likePost(id);
+      const response = await communityApi.likePost(id);
 
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === id
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === id
             ? {
-                ...p,
-                likes_count: res.data.likes_count,
-                liked_by_user: res.data.liked,
+                ...post,
+                likes_count: response.data.likes_count,
+                liked_by_user: response.data.liked,
               }
-            : p
+            : post
         )
       );
     } catch {
-      toast.error('Like failed');
+      toast.error(t(lang, 'likeFailed'));
     }
   };
 
-  // ── Toggle Comments ──
   const toggleComments = (id) => {
-    setOpenComments((prev) => ({
-      ...prev,
-      [id]: !prev[id],
+    setOpenComments((current) => ({
+      ...current,
+      [id]: !current[id],
     }));
   };
 
@@ -112,42 +111,34 @@ export default function CommunityPage() {
       <Navbar />
 
       <div className="pt-24 px-4 max-w-2xl mx-auto">
-
-        {/* HEADER */}
-        <h1 className="text-3xl text-white mb-6 flex gap-2">
-          <Users /> Community
+        <h1 className="theme-heading text-3xl mb-6 flex gap-2">
+          <Users /> {t(lang, 'community')}
         </h1>
 
-        {/* CREATE POST */}
         <div className="glass-card p-5 mb-6 rounded-2xl space-y-3">
-
           <textarea
             value={newPost}
-            onChange={(e) => setNewPost(e.target.value)}
-            placeholder="Share your crop issue or experience..."
+            onChange={(event) => setNewPost(event.target.value)}
+            placeholder={t(lang, 'shareCropIssue')}
             className="input-field w-full"
           />
 
-          {/* Upload */}
-          <label className="flex items-center gap-2 text-sm cursor-pointer text-gray-300">
-            <ImagePlus size={18} /> Add Image
+          <label className="theme-subtext flex items-center gap-2 text-sm cursor-pointer">
+            <ImagePlus size={18} /> {t(lang, 'addImage')}
             <input type="file" hidden onChange={handleImageUpload} />
           </label>
 
-          {image && (
-            <img src={image} className="rounded-xl h-40 object-cover" />
-          )}
+          {image && <img src={image} alt="Uploaded" className="rounded-xl h-40 object-cover" />}
 
           <button onClick={submitPost} className="btn-primary w-full">
-            <Send size={16} /> Post
+            <Send size={16} /> {t(lang, 'post')}
           </button>
         </div>
 
-        {/* FEED */}
-        {loading && <p className="text-gray-400">Loading posts...</p>}
+        {loading && <p className="theme-muted">{t(lang, 'loadingPosts')}</p>}
 
         {!loading && posts.length === 0 && (
-          <p className="text-gray-400">No posts yet 🌱</p>
+          <p className="theme-muted">{t(lang, 'noPostsYet')}</p>
         )}
 
         {posts.map((post) => (
@@ -155,102 +146,88 @@ export default function CommunityPage() {
             key={post.id}
             className="glass-card p-5 mb-6 rounded-2xl hover:scale-[1.01] transition"
           >
-            {/* HEADER */}
             <div className="flex justify-between">
               <div>
-                <h3 className="text-white font-semibold">
-                  {post.author_name}
-                </h3>
-                <p className="text-xs text-gray-400">
-                  {post.location_name || 'Unknown'}
-                </p>
+                <h3 className="theme-heading font-semibold">{post.author_name}</h3>
+                <p className="theme-muted text-xs">{post.location_name || t(lang, 'unknown')}</p>
               </div>
-              <span className="text-xs text-gray-500">
-                {new Date(post.created_at).toLocaleString()}
+              <span className="theme-muted text-xs">
+                {new Date(post.created_at).toLocaleString(getLocale(lang))}
               </span>
             </div>
 
-            {/* IMAGE */}
             {post.image_url && (
               <img
                 src={post.image_url}
+                alt="Post"
                 className="mt-3 rounded-xl w-full h-64 object-cover"
               />
             )}
 
-            {/* TEXT */}
-            <p className="mt-3 text-gray-200">{post.content}</p>
+            <p className="theme-text mt-3">{post.content}</p>
 
-            {/* ACTIONS */}
             <div className="flex gap-6 mt-4 text-sm">
-
               <button onClick={() => handleLike(post.id)}>
-  {post.liked_by_user ? '💖' : '🤍'} {post.likes_count}
-</button>
-
-              <button onClick={() => toggleComments(post.id)}>
-                💬 {post.comments_count}
+                {post.liked_by_user ? '♥' : '♡'} {post.likes_count}
               </button>
 
+              <button onClick={() => toggleComments(post.id)}>
+                {t(lang, 'comments')} {post.comments_count}
+              </button>
             </div>
 
-            {/* COMMENTS */}
-            {openComments[post.id] && (
-              <CommentsSection postId={post.id} />
-            )}
+            {openComments[post.id] && <CommentsSection postId={post.id} />}
           </motion.div>
         ))}
-
       </div>
     </div>
   );
 }
 
-/* ───────────────── COMMENTS COMPONENT ───────────────── */
-
 function CommentsSection({ postId }) {
+  const { lang } = useLanguage();
   const [comments, setComments] = useState([]);
   const [text, setText] = useState('');
 
   useEffect(() => {
-  communityApi.getComments(postId)
-    .then((res) => setComments(res.data))
-    .catch(() => toast.error("Failed to load comments"));
-}, [postId]);
+    communityApi.getComments(postId)
+      .then((response) => setComments(response.data))
+      .catch(() => toast.error(t(lang, 'failedToLoadComments')));
+  }, [lang, postId]);
 
   const submit = async () => {
-  if (!text.trim()) return;
+    if (!text.trim()) {
+      return;
+    }
 
-  try {
-    await communityApi.addComment(postId, text);
-    setText('');
+    try {
+      await communityApi.addComment(postId, text);
+      setText('');
 
-    const res = await communityApi.getComments(postId);
-    setComments(res.data);
-  } catch {
-    toast.error("Failed to add comment");
-  }
-};
+      const response = await communityApi.getComments(postId);
+      setComments(response.data);
+    } catch {
+      toast.error(t(lang, 'failedToAddComment'));
+    }
+  };
 
   return (
-    <div className="mt-3 border-t border-gray-700 pt-3">
-
-      {comments.map((c) => (
-        <p key={c.id} className="text-sm text-gray-300">
-          <b>{c.author}</b>: {c.content}
+    <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--surface-border)' }}>
+      {comments.map((comment) => (
+        <p key={comment.id} className="theme-subtext text-sm">
+          <b>{comment.author}</b>: {comment.content}
         </p>
       ))}
 
       <div className="flex mt-2 gap-2">
         <input
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(event) => setText(event.target.value)}
           className="input-field flex-1"
-          placeholder="Add comment..."
+          placeholder={t(lang, 'addComment')}
         />
-        <button onClick={submit}>Send</button>
+        <button onClick={submit}>{t(lang, 'send')}</button>
       </div>
-
     </div>
   );
 }

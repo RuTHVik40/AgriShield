@@ -39,20 +39,40 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${syne.variable} ${dmSans.variable} dark`}>
+    <html lang="en" className={`${syne.variable} ${dmSans.variable} dark`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#047857" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  theme = theme === 'light' ? 'light' : 'dark';
+                  var root = document.documentElement;
+                  root.dataset.theme = theme;
+                  root.classList.toggle('dark', theme === 'dark');
+                  root.style.colorScheme = theme;
+                  var meta = document.querySelector('meta[name="theme-color"]');
+                  if (meta) {
+                    meta.setAttribute('content', theme === 'light' ? '#2e7d32' : '#047857');
+                  }
+                } catch (error) {}
+              })();
+            `,
+          }}
+        />
       </head>
 
-      <body className="font-body bg-dark-900 text-white antialiased min-h-screen">
+      <body className="app-body font-body antialiased min-h-screen">
         <Providers>
           <PushInit />
           <div className="relative min-h-screen">
-            <div className="fixed inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
-            <div className="fixed inset-0 bg-gradient-to-br from-dark-950 via-dark-900 to-primary-950/30 pointer-events-none" />
+            <div className="theme-backdrop-grid fixed inset-0 pointer-events-none" />
+            <div className="theme-backdrop-gradient fixed inset-0 pointer-events-none" />
 
             <div className="relative z-10">
               {children}
@@ -63,11 +83,12 @@ export default function RootLayout({ children }) {
             position="top-right"
             toastOptions={{
               style: {
-                background: 'rgba(6,18,9,0.95)',
-                border: '1px solid rgba(4,120,87,0.3)',
-                color: '#d1fae5',
+                background: 'var(--toast-bg)',
+                border: '1px solid var(--toast-border)',
+                color: 'var(--toast-text)',
                 backdropFilter: 'blur(12px)',
                 borderRadius: '12px',
+                transition: 'all 0.3s ease',
               },
               success: { iconTheme: { primary: '#10b981', secondary: '#022c22' } },
               error: { iconTheme: { primary: '#ef4444', secondary: '#1c0a0a' } },

@@ -289,6 +289,83 @@ export const RECOMMENDATIONS = {
   }
 
 };
+
+const CLASSIFICATION_METRICS = {
+  Aphids: {
+    precision: 1.0,
+    recall: 0.95,
+    f1Score: 0.97,
+    support: 39,
+  },
+  "Army worm": {
+    precision: 1.0,
+    recall: 0.97,
+    f1Score: 0.99,
+    support: 40,
+  },
+  "Bacterial blight": {
+    precision: 0.92,
+    recall: 0.9,
+    f1Score: 0.91,
+    support: 40,
+  },
+  "Cotton Boll Rot": {
+    precision: 1.0,
+    recall: 0.82,
+    f1Score: 0.9,
+    support: 61,
+  },
+  "Green Cotton Boll": {
+    precision: 0.88,
+    recall: 1.0,
+    f1Score: 0.94,
+    support: 59,
+  },
+  Healthy: {
+    precision: 0.95,
+    recall: 1.0,
+    f1Score: 0.97,
+    support: 39,
+  },
+  "Powdery mildew": {
+    precision: 0.97,
+    recall: 0.97,
+    f1Score: 0.97,
+    support: 38,
+  },
+  "Target spot": {
+    precision: 0.87,
+    recall: 0.98,
+    f1Score: 0.92,
+    support: 41,
+  },
+};
+
+function normalizePestName(pest) {
+  return (pest || "")
+    .toLowerCase()
+    .replace(/edited/g, "")
+    .replace(/healthy leaf/g, "healthy")
+    .replace(/bacterial blight/g, "bacterial blight")
+    .replace(/cotton boll rot/g, "cotton boll rot")
+    .replace(/green cotton boll/g, "green cotton boll")
+    .replace(/powdery mildew/g, "powdery mildew")
+    .replace(/target spot/g, "target spot")
+    .replace(/army worm/g, "army worm")
+    .replace(/aphids/g, "aphids")
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function getClassificationMetrics(pest) {
+  const normalizedPest = normalizePestName(pest);
+
+  return Object.entries(CLASSIFICATION_METRICS).find(
+    ([key]) => normalizePestName(key) === normalizedPest
+  )?.[1] ?? null;
+}
+
 export function getDisplayName(pest) {
   if (!pest) return "Unknown";
 
